@@ -1629,7 +1629,14 @@ function doPost(e) {
 
                 if (tbl.confirmed) {
                     statusBadge = '<span class="text-[10px] text-blue-600 font-bold flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>已發佈</span>';
-                    actionBtn = `<button onclick="toggleStaffConfirm('${tbl.tableNum}')" class="w-full bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-500 font-semibold py-1.5 px-2 rounded-lg text-[10px] border border-slate-200 transition">撤回</button>`;
+                    
+                    // 核心安全規則：如果評審已經評分 (狀態非 none)，工作人員端的 "撤回" 按鈕失效、呈現灰色並提示不可撤回
+                    if (tbl.score && tbl.score !== 'none') {
+                        actionBtn = `<button class="w-full bg-slate-100 text-slate-400 border border-slate-200 py-1.5 px-2 rounded-lg text-[10px] cursor-not-allowed opacity-60" disabled title="評審已開始評分，無法撤回">已評分(不可撤回)</button>`;
+                    } else {
+                        actionBtn = `<button onclick="toggleStaffConfirm('${tbl.tableNum}')" class="w-full bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-500 font-semibold py-1.5 px-2 rounded-lg text-[10px] border border-slate-200 transition">撤回</button>`;
+                    }
+                    
                     cardBg = 'bg-blue-50/40 border-blue-200';
                 } else {
                     statusBadge = '<span class="text-[10px] text-amber-600 font-bold flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-bounce"></span>待確認</span>';
