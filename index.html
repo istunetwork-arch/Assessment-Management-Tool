@@ -95,7 +95,7 @@
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
                 
                 <!-- Timer Card (Left) -->
-                <div class="lg:col-span-5 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between gap-4">
+                <div class="lg:col-span-5 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center gap-4">
                     <div class="flex items-center gap-4">
                         <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center min-w-[120px]">
                             <div id="timer-display" class="text-3xl font-extrabold font-mono text-slate-800 tracking-wider">40:00</div>
@@ -115,17 +115,13 @@
                             </button>
                         </div>
                     </div>
-                    <div class="text-[11px] text-slate-500 leading-relaxed bg-blue-50/50 p-3 rounded-xl border border-blue-100">
-                        <span class="text-blue-700 font-bold">💡 工作人員引導說明：</span><br>
-                        學生經表單提交檔案後，卡片會亮起「待確認」。點選「檢視」核對資料與桌號，確認無誤後點擊「確認發佈」釋出給評審。
-                    </div>
                 </div>
 
                 <!-- Dynamic QR Code Card (Middle/Right) -->
                 <div class="lg:col-span-7 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center gap-5">
                     <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex items-center justify-center shrink-0">
                         <!-- Dynamic QR Code generated via API -->
-                        <img id="staff-qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https://docs.google.com/forms/" alt="學生填表 QR Code" class="w-[110px] h-[110px] object-contain" onerror="this.src='https://placehold.co/120x120/f1f5f9/94a3b8?text=QR+Code'">
+                        <img id="staff-qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https://forms.gle/tskjFSdZX73P2PDj7" alt="學生填表 QR Code" class="w-[110px] h-[110px] object-contain" onerror="this.src='https://placehold.co/120x120/f1f5f9/94a3b8?text=QR+Code'">
                     </div>
                     <div class="space-y-2 flex-1 text-center sm:text-left">
                         <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold">
@@ -135,7 +131,7 @@
                         <p class="text-[11px] text-slate-500 leading-normal">
                             學生可直接掃描此碼，填報作品名稱、構想介紹，並上傳實作規劃檔案 (PDF 或 PPT)。可在設定頁面變更表單連結。
                         </p>
-                        <a id="staff-form-link" href="https://docs.google.com/forms/" target="_blank" class="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:underline font-semibold">
+                        <a id="staff-form-link" href="https://forms.gle/tskjFSdZX73P2PDj7" target="_blank" class="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:underline font-semibold">
                             手動開啟學生表單連結 <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
                         </a>
                     </div>
@@ -189,19 +185,19 @@
                 <!-- Status Filters -->
                 <div class="flex items-center gap-1.5 flex-wrap">
                     <span class="text-xs font-bold text-slate-500 mr-1">篩選：</span>
-                    <button onclick="setJudgeFilter('all')" class="judge-filter bg-slate-200 text-slate-800 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition hover:bg-slate-300">
+                    <button onclick="setJudgeFilter('all', this)" class="judge-filter bg-slate-200 text-slate-800 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition hover:bg-slate-300">
                         全部
                     </button>
-                    <button onclick="setJudgeFilter('award')" class="judge-filter bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition hover:bg-emerald-100">
+                    <button onclick="setJudgeFilter('award', this)" class="judge-filter bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition hover:bg-emerald-100">
                         獲獎 (綠)
                     </button>
-                    <button onclick="setJudgeFilter('hold')" class="judge-filter bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition hover:bg-amber-100">
+                    <button onclick="setJudgeFilter('hold', this)" class="judge-filter bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition hover:bg-amber-100">
                         暫留 (黃)
                     </button>
-                    <button onclick="setJudgeFilter('eliminate')" class="judge-filter bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition hover:bg-slate-200">
+                    <button onclick="setJudgeFilter('eliminate', this)" class="judge-filter bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition hover:bg-slate-200">
                         淘汰 (灰)
                     </button>
-                    <button onclick="setJudgeFilter('unevaluated')" class="judge-filter bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition hover:bg-blue-100">
+                    <button onclick="setJudgeFilter('unevaluated', this)" class="judge-filter bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition hover:bg-blue-100">
                         未評分
                     </button>
                 </div>
@@ -323,7 +319,7 @@
                     <div class="space-y-1.5">
                         <h4 class="font-bold text-slate-800">1. 準備 Google 表單</h4>
                         <p class="leading-relaxed pl-3 border-l-2 border-blue-500">
-                            表單包含：<strong>桌號</strong>（下拉選單 1 至 22 或動態桌號）、<strong>作品名稱</strong>、<strong>構想介紹</strong>、與<strong>實作規劃檔案（上傳格式限 PDF 或 PPT）</strong>。接著在回覆分頁中點擊「連結至試算表」。
+                            表單包含：<strong>桌號</strong>（下拉選單 1 至 22）、<strong>作品名稱</strong>、<strong>構想介紹</strong>、與<strong>實作規劃檔案（上傳格式限 PDF 或 PPT）</strong>。接著在回覆分頁中點擊「連結至試算表」。
                         </p>
                     </div>
 
@@ -583,6 +579,13 @@ function doPost(e) {
                 <h3 id="lock-title" class="text-sm font-bold text-slate-800">安全防護鎖</h3>
                 <p id="lock-subtitle" class="text-[11px] text-slate-500 mt-1">進入此介面需要密碼授權</p>
             </div>
+
+            <!-- Role Selector Toggle Inside Lock Screen -->
+            <div class="flex bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
+                <button id="lock-target-staff" onclick="setLockTarget('staff')" class="flex-1 py-1.5 rounded-lg font-bold transition-all bg-white text-blue-600 shadow-sm">工作人員 / 管理</button>
+                <button id="lock-target-judge" onclick="setLockTarget('judge')" class="flex-1 py-1.5 rounded-lg font-bold transition-all text-slate-500 hover:text-slate-800">評審端</button>
+            </div>
+
             <div class="space-y-1.5 text-left">
                 <label class="block text-[10px] font-bold text-slate-500">授權存取密碼：</label>
                 <input id="lock-input" type="password" placeholder="請輸入密碼" class="w-full bg-slate-50 border border-slate-300 focus:border-blue-500 text-slate-800 px-3 py-2.5 rounded-xl text-center font-mono tracking-widest outline-none transition text-sm">
@@ -639,11 +642,11 @@ function doPost(e) {
     let syncInterval = null; 
 
     // Default Student Google Form URL (for QR Code)
-    let studentFormUrl = 'https://docs.google.com/forms/';
+    let studentFormUrl = 'https://forms.gle/tskjFSdZX73P2PDj7';
 
     // Filters and sorting flags
     let judgeSortMode = 'table'; 
-    let judgeFilterMode = 'all'; 
+    let judgeFilterMode = 'unevaluated'; // 預設篩選「未評分」組別
 
     let activeModalTableNum = null;
 
@@ -721,6 +724,47 @@ function doPost(e) {
         onConfirmProceed = null;
     }
 
+    // Already-Evaluated table snapshot locking helpers
+    function getLockedSnapshots() {
+        const saved = localStorage.getItem('aurora_locked_snapshots');
+        return saved ? JSON.parse(saved) : {};
+    }
+
+    function saveTableLock(tableNum, data) {
+        const snapshots = getLockedSnapshots();
+        snapshots[tableNum.toString()] = {
+            studentName: data.studentName,
+            description: data.description,
+            fileUrl: data.fileUrl,
+            timestamp: data.timestamp
+        };
+        localStorage.setItem('aurora_locked_snapshots', JSON.stringify(snapshots));
+    }
+
+    function removeTableLock(tableNum) {
+        const snapshots = getLockedSnapshots();
+        delete snapshots[tableNum.toString()];
+        localStorage.setItem('aurora_locked_snapshots', JSON.stringify(snapshots));
+    }
+
+    // Enforce lock overlay on memory tableData
+    function applyLockedSnapshots(dataArray) {
+        const snapshots = getLockedSnapshots();
+        return dataArray.map(item => {
+            const tableStr = item.tableNum.toString();
+            if (item.score !== 'none' && snapshots[tableStr]) {
+                return {
+                    ...item,
+                    studentName: snapshots[tableStr].studentName,
+                    description: snapshots[tableStr].description,
+                    fileUrl: snapshots[tableStr].fileUrl,
+                    timestamp: snapshots[tableStr].timestamp
+                };
+            }
+            return item;
+        });
+    }
+
     // Initialize application on load
     window.onload = function() {
         // Load active table configuration
@@ -781,10 +825,16 @@ function doPost(e) {
             updateTimerDisplay();
         }
 
+        // Enforce frozen snapshots in table data
+        tableData = applyLockedSnapshots(tableData);
+
         // Render views
         renderAll();
         renderTableChips();
         updateModeSwitcherUI();
+
+        // 預設選定評審端「未評分」按鈕
+        setJudgeFilter('unevaluated');
 
         // Setup real-time cloud background polling (3 seconds)
         startCloudPolling();
@@ -901,32 +951,44 @@ function doPost(e) {
             if (isUnlocked) {
                 switchView(viewName);
             } else {
-                openLockScreen(viewName, '工作人員端 & 管理設定', STAFF_PASS);
+                openLockScreen(viewName, '工作人員端 & 管理設定');
             }
         } else if (viewName === 'judge') {
             const isUnlocked = sessionStorage.getItem('unlocked_judge') === 'true';
             if (isUnlocked) {
                 switchView(viewName);
             } else {
-                openLockScreen(viewName, '評審端', JUDGE_PASS);
+                openLockScreen(viewName, '評審端');
             }
         }
     }
 
-    function openLockScreen(targetView, viewDisplayName, correctPassword) {
-        pendingTargetView = targetView;
-        document.getElementById('lock-title').innerText = `解鎖 ${viewDisplayName}`;
-        document.getElementById('lock-subtitle').innerText = "請輸入對應的授權安全密碼以繼續";
-        document.getElementById('lock-input').value = '';
+    function setLockTarget(view) {
+        pendingTargetView = view;
+        const staffBtn = document.getElementById('lock-target-staff');
+        const judgeBtn = document.getElementById('lock-target-judge');
         
+        if (view === 'staff' || view === 'settings') {
+            pendingTargetView = 'staff'; // 預設導向工作人員端
+            staffBtn.className = "flex-1 py-1.5 rounded-lg font-bold transition-all bg-white text-blue-600 shadow-sm";
+            judgeBtn.className = "flex-1 py-1.5 rounded-lg font-bold transition-all text-slate-500 hover:text-slate-800";
+            document.getElementById('lock-title').innerText = "解鎖工作人員端 & 管理設定";
+        } else {
+            pendingTargetView = 'judge';
+            judgeBtn.className = "flex-1 py-1.5 rounded-lg font-bold transition-all bg-white text-blue-600 shadow-sm";
+            staffBtn.className = "flex-1 py-1.5 rounded-lg font-bold transition-all text-slate-500 hover:text-slate-800";
+            document.getElementById('lock-title').innerText = "解鎖評審端";
+        }
+        document.getElementById('lock-input').focus();
+    }
+
+    function openLockScreen(targetView, viewDisplayName) {
         const overlay = document.getElementById('password-lock-screen');
         overlay.classList.remove('pointer-events-none', 'opacity-0');
         overlay.querySelector('.transform').classList.remove('scale-95');
         overlay.querySelector('.transform').classList.add('scale-100');
         
-        setTimeout(() => {
-            document.getElementById('lock-input').focus();
-        }, 100);
+        setLockTarget(targetView);
     }
 
     function cancelPasswordUnlock() {
@@ -1032,6 +1094,7 @@ function doPost(e) {
             } else {
                 initializeEmptyTableData();
             }
+            tableData = applyLockedSnapshots(tableData);
             renderAll();
         }
     }
@@ -1086,8 +1149,26 @@ function doPost(e) {
                     }
                 }
                 
-                // 2. 同步資料結構
-                tableData = result.data;
+                // 2. 獲取資料並智慧合併已評分鎖定邏輯
+                let cloudData = result.data;
+                const snapshots = getLockedSnapshots();
+
+                // 智慧防護：如果雲端回傳已包含其他評審打分且本機未鎖定，即時截圖本機快照防未來被亂改
+                cloudData.forEach(item => {
+                    const tableStr = item.tableNum.toString();
+                    if (item.score !== 'none' && !snapshots[tableStr] && item.hasSubmitted) {
+                        snapshots[tableStr] = {
+                            studentName: item.studentName,
+                            description: item.description,
+                            fileUrl: item.fileUrl,
+                            timestamp: item.timestamp
+                        };
+                    }
+                });
+                localStorage.setItem('aurora_locked_snapshots', JSON.stringify(snapshots));
+
+                // 綁定鎖定快照
+                tableData = applyLockedSnapshots(cloudData);
                 renderAll();
             }
         } catch (error) {
@@ -1220,6 +1301,7 @@ function doPost(e) {
 
         localStorage.setItem('aurora_active_tables', JSON.stringify(activeTables));
         alignTableDataWithConfiguration();
+        tableData = applyLockedSnapshots(tableData);
         
         input.value = '';
         renderTableChips();
@@ -1240,6 +1322,7 @@ function doPost(e) {
                 localStorage.setItem('aurora_active_tables', JSON.stringify(activeTables));
                 
                 alignTableDataWithConfiguration();
+                tableData = applyLockedSnapshots(tableData);
                 renderTableChips();
                 renderAll();
                 showToast(`已成功移除桌號 「${tableNum}」`, 'info');
@@ -1285,6 +1368,12 @@ function doPost(e) {
         
         if (index === -1) return;
 
+        // 如果該桌已經評過分，直接鎖定不給模擬更新
+        if (tableData[index].score !== 'none') {
+            showToast(`桌號 ${targetTable} 已經完成評選，鎖定中不可更新！`, 'warning');
+            return;
+        }
+
         // Mocking real project names and descriptions
         const projectNames = ["AI智慧綠色水耕溫室系統", "大數據健康照護提醒藥盒", "VR古物沉浸式互動導覽", "自適應環境低碳能效感測器", "智慧路牌及微電車安全巡檢"];
         const descriptions = [
@@ -1316,6 +1405,9 @@ function doPost(e) {
             "確定要重設所有評審狀態與發佈結果嗎？",
             "這將會重置當前所有桌號的「確認發佈狀態」與「評審打分狀態」，學生上傳的檔案內容將予以保留。若連線雲端則會重設雲端紀錄。",
             () => {
+                // 清空鎖定快照
+                localStorage.removeItem('aurora_locked_snapshots');
+
                 if (systemMode === 'cloud' && gasWebappUrl) {
                     fetch(gasWebappUrl, {
                         method: 'POST',
@@ -1334,7 +1426,7 @@ function doPost(e) {
                 });
                 saveLocalState();
                 renderAll();
-                showToast("本地所有發佈與評選成績已完成初始化！", "success");
+                showToast("本地所有發佈與評選成績及鎖定快照已完成重設！", "success");
             }
         );
     }
@@ -1389,15 +1481,26 @@ function doPost(e) {
         renderJudgeView();
     }
 
-    function setJudgeFilter(filter) {
+    function setJudgeFilter(filter, btnElement) {
         judgeFilterMode = filter;
         
         const filters = document.querySelectorAll('.judge-filter');
         filters.forEach(btn => {
-            btn.classList.remove('ring-2', 'ring-blue-500/50', 'ring-offset-1');
+            btn.className = btn.className.replace(/ring-2|ring-blue-500\/50|ring-offset-1/g, '').trim();
         });
         
-        event.currentTarget.classList.add('ring-2', 'ring-blue-500/50', 'ring-offset-1');
+        if (btnElement) {
+            btnElement.classList.add('ring-2', 'ring-blue-500/50', 'ring-offset-1');
+        } else {
+            // 自動尋找並高亮相對應篩選按鈕
+            const filterBtns = document.querySelectorAll('.judge-filter');
+            filterBtns.forEach(btn => {
+                const clickAttr = btn.getAttribute('onclick') || '';
+                if (clickAttr.includes(`'${filter}'`)) {
+                    btn.classList.add('ring-2', 'ring-blue-500/50', 'ring-offset-1');
+                }
+            });
+        }
         renderJudgeView();
     }
 
@@ -1458,6 +1561,15 @@ function doPost(e) {
         const index = tableData.findIndex(d => d.tableNum === tableNum.toString());
         if (index === -1) return;
         
+        // 核心防弊漏洞鎖定判定：如果打分數從無（none）變成有，立刻在本地鎖死目前卡片內容快照！
+        if (scoreType !== 'none' && tableData[index].score === 'none') {
+            saveTableLock(tableNum, tableData[index]);
+            showToast(`已鎖定桌號 ${tableNum} 目前的作品上傳資料，防止未來被惡意覆蓋修改！`, 'success');
+        } else if (scoreType === 'none') {
+            // 清除分數即釋放鎖定
+            removeTableLock(tableNum);
+        }
+
         tableData[index].score = scoreType;
         saveLocalState();
         renderAll();
@@ -1622,6 +1734,9 @@ function doPost(e) {
                 badge = `<div class="absolute right-3 top-3 text-slate-500 bg-slate-200 border border-slate-300 px-2 py-0.5 rounded text-[9px] font-bold">🔘 淘汰</div>`;
             }
 
+            // 標示鎖定狀態小圖示，告知使用者資料已被鎖定不會被表單複寫
+            const lockIcon = tbl.score !== 'none' ? `<i class="fa-solid fa-lock text-slate-400 text-[10px]" title="此桌已完成決策，資料完全鎖定防篡改中"></i>` : '';
+
             card.className = `${bgClass} p-4 rounded-xl border cursor-pointer transition-all duration-150 hover:-translate-y-1 hover:shadow-md flex flex-col justify-between h-44 relative group`;
             card.onclick = () => openModal(tbl.tableNum);
 
@@ -1631,7 +1746,7 @@ function doPost(e) {
                     <div class="flex items-center gap-2">
                         <span class="text-lg font-black font-mono text-slate-800 bg-slate-100 px-2 h-9 rounded-lg border border-slate-200 flex items-center justify-center min-w-[36px]">${tbl.tableNum}</span>
                         <div>
-                            <span class="text-[9px] font-bold text-slate-400 block uppercase">桌號</span>
+                            <span class="text-[9px] font-bold text-slate-400 block uppercase flex items-center gap-1">桌號 ${lockIcon}</span>
                             <span class="text-[10px] font-semibold text-blue-600 group-hover:underline">點選進行決策</span>
                         </div>
                     </div>
