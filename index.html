@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="h-full bg-slate-50 text-slate-800">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>評選管理工具 Assessment Management Tool</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font: Inter & Noto Sans TC -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+        }
+        /* Premium custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col overflow-hidden bg-slate-50">
+
+<div id="app" class="flex flex-col h-full hidden">
+    
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-[60] flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Header Navigation -->
+    <header class="bg-white border-b border-slate-200 px-6 py-4 flex flex-wrap justify-between items-center gap-4 shrink-0 shadow-sm z-30">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 p-2.5 rounded-xl shadow-md shadow-blue-500/20">
+                <i class="fa-solid fa-gavel text-lg text-white"></i>
+            </div>
+            <div>
+                <h1 class="text-base font-bold text-slate-900 tracking-wide">Assessment Management Tool</h1>
+                <p class="text-[11px] text-slate-500"> 2026 Race to Robot — NXP Edge AI 應用工作坊 ｜ 評選管理工具</p>
+            </div>
+        </div>
+
+        <!-- Connection / Sync Mode Switcher Toggle -->
+        <div class="flex items-center gap-2.5 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
+            <button onclick="setSystemMode('local')" id="mode-btn-local" class="px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1 bg-white text-blue-600 shadow-sm">
+                <i class="fa-solid fa-flask"></i> 🧪 本地測試
+            </button>
+            <button onclick="setSystemMode('cloud')" id="mode-btn-cloud" class="px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1 text-slate-500 hover:text-slate-800">
+                <i class="fa-solid fa-cloud"></i> ☁️ 雲端連線
+            </button>
+            <span class="w-[1px] h-4 bg-slate-300 mx-1"></span>
+            <!-- Simulation Trigger (Always visible in Local Mode) -->
+            <button id="mock-trigger-btn" onclick="triggerMockSubmission()" class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-lg text-[10px] font-bold transition flex items-center gap-1">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>模擬學生填表
+            </button>
+            <!-- Cloud Active Sync indicator -->
+            <div id="cloud-sync-badge" class="hidden items-center gap-1 px-2.5 py-1 text-[10px] font-bold text-emerald-600">
+                <i class="fa-solid fa-arrows-rotate animate-spin"></i> 同步中...
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+            <button onclick="trySwitchView('staff')" id="nav-staff" class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 bg-white text-blue-600 shadow-sm">
+                <i class="fa-solid fa-users-gear"></i> 工作人員端
+            </button>
+            <button onclick="trySwitchView('judge')" id="nav-judge" class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 text-slate-500 hover:text-slate-800">
+                <i class="fa-solid fa-user-shield"></i> 評審端
+            </button>
+            <button onclick="trySwitchView('settings')" id="nav-settings" class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 text-slate-500 hover:text-slate-800">
+                <i class="fa-solid fa-screwdriver-wrench"></i> 設定與桌號管理
+            </button>
+            <button onclick="lockCurrentSession()" class="px-2.5 py-1.5 rounded-lg text-xs font-bold text-red-500 hover:bg-red-50 transition-all flex items-center gap-1" title="手動鎖定此階段">
+                <i class="fa-solid fa-lock"></i> 鎖定
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-y-auto p-6">
+
+        <!-- STAFF VIEW -->
+        <section id="view-staff" class="space-y-6 max-w-7xl mx-auto">
+            <!-- Top Dashboard: Timer, QR Code, and Flow instructions -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                
+                <!-- Timer Card (Left) -->
+                <div class="lg:col-span-5 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center min-w-[120px]">
+                            <div id="timer-display" class="text-3xl font-extrabold font-mono text-slate-800 tracking-wider">40:00</div>
+                            <div class="text-[10px] text-slate-400 font-bold uppercase mt-0.5">發表倒計時</div>
+                        </div>
+                        <div class="flex flex-col gap-1.5 flex-1">
+                            <div class="flex gap-1.5">
+                                <button id="timer-start" onclick="startTimer()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-3 rounded-lg text-xs shadow-sm transition active:scale-95 flex items-center justify-center gap-1 flex-1">
+                                    <i class="fa-solid fa-play"></i> 開始
+                                </button>
+                                <button id="timer-pause" onclick="pauseTimer()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-1.5 px-3 rounded-lg text-xs transition active:scale-95 flex items-center justify-center gap-1 flex-1" disabled>
+                                    <i class="fa-solid fa-pause"></i> 暫停
+                                </button>
+                            </div>
+                            <button id="timer-reset" onclick="resetTimer()" class="bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 py-1.5 px-3 rounded-lg text-xs border border-slate-200 hover:border-red-200 transition active:scale-95 w-full">
+                                重設時間 (40 分鐘)
+                            </button>
+                        </div>
+                    </div>
+                    <div class="text-[11px] text-slate-500 leading-relaxed bg-blue-50/50 p-3 rounded-xl border border-blue-100">
+                        <span class="text-blue-700 font-bold">💡 工作人員引導說明：</span><br>
+                        學生經表單提交檔案後，卡片會亮起「待確認」。點選「檢視」核對資料與桌號，確認無誤後點擊「確認發佈」釋出給評審。
+                    </div>
+                </div>
+
+                <!-- Dynamic QR Code Card (Middle/Right) -->
+                <div class="lg:col-span-7 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center gap-5">
+                    <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex items-center justify-center shrink-0">
+                        <!-- Dynamic QR Code generated via API -->
+                        <img id="staff-qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https://docs.google.com/forms/" alt="學生填表 QR Code" class="w-[110px] h-[110px] object-contain" onerror="this.src='https://placehold.co/120x120/f1f5f9/94a3b8?text=QR+Code'">
+                    </div>
+                    <div class="space-y-2 flex-1 text-center sm:text-left">
+                        <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold">
+                            <i class="fa-solid fa-qrcode animate-pulse"></i> 學生填表專用
+                        </div>
+                        <h4 class="text-sm font-bold text-slate-800">請學生掃描此碼填寫資料</h4>
+                        <p class="text-[11px] text-slate-500 leading-normal">
+                            學生可直接掃描此碼，填報作品名稱、構想介紹，並上傳實作規劃檔案 (PDF 或 PPT)。可在設定頁面變更表單連結。
+                        </p>
+                        <a id="staff-form-link" href="https://docs.google.com/forms/" target="_blank" class="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:underline font-semibold">
+                            手動開啟學生表單連結 <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Table Grid Header -->
+            <div class="border-b border-slate-200 pb-2 flex justify-between items-center">
+                <h3 class="text-sm font-bold text-slate-700 flex items-center gap-1.5">
+                    <i class="fa-solid fa-table-list text-blue-500"></i> 桌號進度管理
+                </h3>
+                <span id="staff-table-count" class="text-[11px] text-slate-400 font-bold">桌號加載中...</span>
+            </div>
+
+            <!-- Empty Tables State -->
+            <div id="staff-empty-tables" class="hidden text-center py-12 bg-white rounded-2xl border border-dashed border-slate-300 max-w-md mx-auto shadow-sm">
+                <div class="bg-slate-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400">
+                    <i class="fa-solid fa-folder-open"></i>
+                </div>
+                <h4 class="text-slate-700 font-bold text-sm mb-1">目前尚未設定桌號</h4>
+                <p class="text-slate-400 text-xs px-6 leading-relaxed mb-4">請先前往「設定與桌號管理」分頁新增桌號，以開始進行評選排程管理。</p>
+                <button onclick="trySwitchView('settings')" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-4 rounded-lg text-xs transition shadow-sm">
+                    前往新增桌號
+                </button>
+            </div>
+
+            <!-- Dynamic Table Grid for Staff -->
+            <div id="staff-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                <!-- Dynamic cards generated here -->
+            </div>
+        </section>
+
+        <!-- JUDGE VIEW -->
+        <section id="view-judge" class="space-y-6 max-w-7xl mx-auto hidden">
+            <!-- Filter & Sort Panel -->
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-wrap justify-between items-center gap-4">
+                <!-- Sorting Selection -->
+                <div class="flex items-center gap-2 text-xs">
+                    <span class="font-bold text-slate-500">排序：</span>
+                    <div class="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                        <button onclick="setJudgeSort('table')" id="sort-table-btn" class="px-3 py-1 rounded-md font-semibold transition-all bg-white text-slate-800 shadow-sm">
+                            依桌號
+                        </button>
+                        <button onclick="setJudgeSort('color')" id="sort-color-btn" class="px-3 py-1 rounded-md font-semibold transition-all text-slate-500 hover:text-slate-800">
+                            依評選狀態 (綠 ＞ 黃 ＞ 灰)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Status Filters -->
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="text-xs font-bold text-slate-500 mr-1">篩選：</span>
+                    <button onclick="setJudgeFilter('all')" class="judge-filter bg-slate-200 text-slate-800 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition hover:bg-slate-300">
+                        全部
+                    </button>
+                    <button onclick="setJudgeFilter('award')" class="judge-filter bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition hover:bg-emerald-100">
+                        獲獎 (綠)
+                    </button>
+                    <button onclick="setJudgeFilter('hold')" class="judge-filter bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition hover:bg-amber-100">
+                        暫留 (黃)
+                    </button>
+                    <button onclick="setJudgeFilter('eliminate')" class="judge-filter bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition hover:bg-slate-200">
+                        淘汰 (灰)
+                    </button>
+                    <button onclick="setJudgeFilter('unevaluated')" class="judge-filter bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition hover:bg-blue-100">
+                        未評分
+                    </button>
+                </div>
+            </div>
+
+            <!-- Grid Header -->
+            <div class="border-b border-slate-200 pb-2 flex justify-between items-center">
+                <h3 class="text-sm font-bold text-slate-700 flex items-center gap-1.5">
+                    <i class="fa-solid fa-gavel text-blue-500"></i> 已發佈桌號 (評審評分區)
+                </h3>
+                <span id="judge-status-count" class="text-xs text-slate-400 font-medium">正在取得資料...</span>
+            </div>
+
+            <!-- Active Cards Area for Judges -->
+            <div id="judge-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <!-- Only visible and confirmed table cards show here -->
+            </div>
+
+            <!-- Empty State for Judges -->
+            <div id="judge-empty-state" class="hidden text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300 max-w-md mx-auto shadow-sm">
+                <div class="bg-slate-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400">
+                    <i class="fa-solid fa-hourglass"></i>
+                </div>
+                <h4 class="text-slate-700 font-bold text-sm mb-1">尚無可評審的桌號</h4>
+                <p class="text-slate-400 text-xs px-6 leading-relaxed">工作人員尚未「確認發佈」任何桌號。請等待學生填寫 Google 表單並經由工作人員確認釋出。</p>
+            </div>
+        </section>
+
+        <!-- SETTINGS & GUIDE VIEW -->
+        <section id="view-settings" class="space-y-6 max-w-4xl mx-auto hidden">
+            
+            <!-- Dynamic Table Numbers Management Panel -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <h2 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 border-b border-slate-100 pb-2">
+                    <i class="fa-solid fa-table text-blue-500"></i> 桌號管理 (Table Management)
+                </h2>
+                <p class="text-xs text-slate-500 leading-relaxed">
+                    您可以動態新增、刪除實體會場中的展示桌號。刪除時會同步清理該桌號上傳的檔案與評分紀錄。
+                    <span class="text-emerald-600 font-semibold">(已支援雲端多機同步：在任何一台電腦上修改，全場評審與工作人員電腦都會即時更新！)</span>
+                </p>
+                
+                <!-- Add Table Input Box -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                    <label class="block text-xs font-bold text-slate-600">新增展示桌號 (支援數字或英數，例如: 23, 10A)：</label>
+                    <div class="flex gap-2 max-w-md">
+                        <input id="new-table-input" type="text" placeholder="輸入桌號，如 23" class="flex-1 bg-white border border-slate-300 focus:border-blue-500 text-slate-800 px-3 py-2 rounded-xl text-xs outline-none transition font-semibold">
+                        <button onclick="handleAddNewTable()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition shadow-sm active:scale-95 shrink-0">
+                            <i class="fa-solid fa-plus mr-1"></i> 新增桌號
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Active Tables List -->
+                <div class="space-y-2">
+                    <span class="block text-xs font-bold text-slate-600">目前運作中的展示桌號（點擊 <i class="fa-solid fa-trash-can text-red-400"></i> 即可刪除）：</span>
+                    <div id="table-chips-container" class="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl min-h-[50px]">
+                        <!-- Dynamic Chips here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Student Form URL Setup -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <h2 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 border-b border-slate-100 pb-2">
+                    <i class="fa-solid fa-qrcode text-blue-500"></i> 學生表單 QR Code 連結設定
+                </h2>
+                <p class="text-xs text-slate-500 leading-relaxed">
+                    請在此處貼上您的 Google 表單填寫網址。系統會自動在工作人員端繪製專屬的 QR Code，方便參賽學生現場掃描提交作品資料。
+                </p>
+                <div class="space-y-2">
+                    <label class="block text-xs font-bold text-slate-600">學生 Google 表單 URL：</label>
+                    <div class="flex gap-2">
+                        <input id="student-form-url-input" type="url" placeholder="https://docs.google.com/forms/d/e/.../viewform" class="flex-1 bg-slate-50 border border-slate-300 focus:border-blue-500 text-slate-800 px-3 py-2.5 rounded-xl text-xs outline-none transition font-mono">
+                        <button onclick="saveStudentFormUrl()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition shadow-sm active:scale-95 shrink-0">
+                            儲存並更新 QR Code
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sync URL Input Box -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <h2 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 border-b border-slate-100 pb-2">
+                    <i class="fa-solid fa-link text-blue-500"></i> Google Sheet 雲端串接設定
+                </h2>
+                <p class="text-xs text-slate-500 leading-relaxed">
+                    在下方輸入您部署好的 Google Apps Script 網址。
+                    串接完成後，您可以自由切換 **本地測試模式** 與 **雲端聯網模式**，享受多機同步的順暢感。
+                </p>
+                <div class="space-y-2">
+                    <label class="block text-xs font-bold text-slate-600">Google Apps Script API 網址：</label>
+                    <div class="flex gap-2">
+                        <input id="gas-url-input" type="url" placeholder="https://script.google.com/macros/s/.../exec" class="flex-1 bg-slate-50 border border-slate-300 focus:border-blue-500 text-slate-800 px-3 py-2 rounded-xl text-xs outline-none transition font-mono">
+                        <button onclick="saveSettings()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition shadow-sm active:scale-95 shrink-0">
+                            儲存並測試連線
+                        </button>
+                    </div>
+                </div>
+                <div class="flex gap-3 pt-1">
+                    <button onclick="testGasConnection()" class="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-200 transition">
+                        測試連線狀態
+                    </button>
+                    <button onclick="disconnectGas()" class="text-[11px] bg-white hover:bg-red-50 text-slate-500 hover:text-red-600 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-red-100 transition">
+                        清除 API 網址設定
+                    </button>
+                    <button onclick="promptClearSystemData()" class="text-[11px] ml-auto bg-white hover:bg-red-50 text-red-500 px-3 py-1.5 rounded-lg border border-red-100 transition flex items-center gap-1">
+                        <i class="fa-solid fa-arrows-rotate"></i> 重設所有評審與發佈狀態
+                    </button>
+                </div>
+            </div>
+
+            <!-- Simplified Setup Guide -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <h2 class="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-1.5">
+                    <i class="fa-solid fa-graduation-cap text-amber-500"></i> 三步驟快速啟用教學
+                </h2>
+
+                <div class="space-y-4 text-xs text-slate-600">
+                    <div class="space-y-1.5">
+                        <h4 class="font-bold text-slate-800">1. 準備 Google 表單</h4>
+                        <p class="leading-relaxed pl-3 border-l-2 border-blue-500">
+                            表單包含：<strong>桌號</strong>（下拉選單 1 至 22 或動態桌號）、<strong>作品名稱</strong>、<strong>構想介紹</strong>、與<strong>實作規劃檔案（上傳格式限 PDF 或 PPT）</strong>。接著在回覆分頁中點擊「連結至試算表」。
+                        </p>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <h4 class="font-bold text-slate-800">2. 貼入 Google Apps Script</h4>
+                        <p class="leading-relaxed pl-3 border-l-2 border-blue-500 mb-2">
+                            在試算表上方點選「延伸功能」->「Apps Script」，清空預設程式，並貼入下方程式碼儲存。
+                        </p>
+                        <!-- Code Block inside Settings -->
+                        <div class="bg-slate-50 rounded-lg border border-slate-200 overflow-hidden text-[10px]">
+                            <div class="bg-slate-100 px-3 py-1.5 flex justify-between items-center border-b border-slate-200">
+                                <span class="font-mono text-slate-600">backend.gs (已支援桌號動態雲端同步！)</span>
+                                <button onclick="copyGasCode()" class="text-[10px] text-blue-600 hover:underline">
+                                    複製程式碼
+                                </button>
+                            </div>
+                            <pre class="p-3 font-mono text-slate-600 overflow-x-auto max-h-40 leading-normal">
+/* GAS Backend - Copy to Apps Script */
+function doGet(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var formSheet = ss.getSheets()[0]; 
+  var formValues = formSheet.getDataRange().getValues();
+  
+  // 建立或讀取桌號設定表，實現桌號清單多機動態同步
+  var configSheet = ss.getSheetByName("桌號設定");
+  if (!configSheet) {
+    configSheet = ss.insertSheet("桌號設定");
+    configSheet.appendRow(["桌號"]);
+    for (var i = 1; i <= 22; i++) {
+      configSheet.appendRow([i.toString()]);
+    }
+  }
+  var configValues = configSheet.getDataRange().getValues();
+  var activeTables = [];
+  for (var c = 1; c < configValues.length; c++) {
+    var val = configValues[c][0].toString().trim();
+    if (val) activeTables.push(val);
+  }
+
+  // 讀取評選狀態
+  var statusSheet = ss.getSheetByName("評選狀態");
+  if (!statusSheet) {
+    statusSheet = ss.insertSheet("評選狀態");
+    statusSheet.appendRow(["桌號", "確認狀態", "評審狀態"]);
+  }
+  var statusValues = statusSheet.getDataRange().getValues();
+  
+  var tableStates = {};
+  activeTables.forEach(function(t) {
+    tableStates[t] = { tableNum: t, confirmed: "no", score: "none" };
+  });
+
+  for (var j = 1; j < statusValues.length; j++) {
+    var tNum = statusValues[j][0].toString().trim();
+    if (tableStates[tNum]) {
+      tableStates[tNum].confirmed = statusValues[j][1] || "no";
+      tableStates[tNum].score = statusValues[j][2] || "none";
+    }
+  }
+
+  // 分析表單回應資料
+  var headers = formValues[0];
+  var timestampIdx = 0;
+  var tableIdx = 1;
+  var nameIdx = 2;
+  var descIdx = 3;
+  var fileIdx = 4;
+  
+  for (var h = 0; h < headers.length; h++) {
+    var headerText = headers[h].toString();
+    if (headerText.indexOf("桌號") > -1) tableIdx = h;
+    else if (headerText.indexOf("名稱") > -1 || headerText.indexOf("組別") > -1 || headerText.indexOf("作品") > -1) nameIdx = h;
+    else if (headerText.indexOf("構想") > -1 || headerText.indexOf("介紹") > -1) descIdx = h;
+    else if (headerText.indexOf("檔案") > -1 || headerText.indexOf("PDF") > -1 || headerText.indexOf("PPT") > -1 || headerText.indexOf("規劃") > -1) fileIdx = h;
+  }
+
+  // 過濾學生重複提交，只抓最新一筆
+  var latestSubmissions = {};
+  for (var k = 1; k < formValues.length; k++) {
+    var row = formValues[k];
+    var tableNum = row[tableIdx].toString().trim();
+    if (tableNum) {
+      latestSubmissions[tableNum] = {
+        tableNum: tableNum,
+        timestamp: row[timestampIdx],
+        studentName: row[nameIdx] || "未填寫作品名稱",
+        description: row[descIdx] || "無介紹大綱",
+        fileUrl: row[fileIdx] || ""
+      };
+    }
+  }
+
+  var finalData = [];
+  activeTables.forEach(function(t) {
+    var sub = latestSubmissions[t] || null;
+    finalData.push({
+      tableNum: t,
+      hasSubmitted: sub !== null,
+      studentName: sub ? sub.studentName : "",
+      description: sub ? sub.description : "",
+      fileUrl: sub ? sub.fileUrl : "",
+      timestamp: sub ? sub.timestamp : "",
+      confirmed: tableStates[t].confirmed === "yes",
+      score: tableStates[t].score
+    });
+  });
+
+  return ContentService.createTextOutput(JSON.stringify({
+    status: "success",
+    activeTables: activeTables,
+    data: finalData
+  })).setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var params = JSON.parse(e.postData.contents);
+    var action = params.action;
+    
+    if (action === "updateState") {
+      var statusSheet = ss.getSheetByName("評選狀態") || ss.insertSheet("評選狀態");
+      var tableNum = params.tableNum.toString();
+      var confirmed = params.confirmed;
+      var score = params.score;
+      var dataRange = statusSheet.getDataRange();
+      var values = dataRange.getValues();
+      var found = false;
+      for (var j = 1; j < values.length; j++) {
+        if (values[j][0].toString() === tableNum) {
+          if (confirmed !== undefined) statusSheet.getRange(j + 1, 2).setValue(confirmed);
+          if (score !== undefined) statusSheet.getRange(j + 1, 3).setValue(score);
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        statusSheet.appendRow([tableNum, confirmed || "no", score || "none"]);
+      }
+    } else if (action === "syncTables") {
+      // 同步動態桌號設定
+      var configSheet = ss.getSheetByName("桌號設定") || ss.insertSheet("桌號設定");
+      configSheet.clear();
+      configSheet.appendRow(["桌號"]);
+      var tables = params.activeTables;
+      for (var i = 0; i < tables.length; i++) {
+        configSheet.appendRow([tables[i].toString()]);
+      }
+    } else if (action === "clearAll") {
+      var statusSheet = ss.getSheetByName("評選狀態");
+      if (statusSheet) {
+        var dataRange = statusSheet.getDataRange();
+        var values = dataRange.getValues();
+        for (var j = 1; j < values.length; j++) {
+          statusSheet.getRange(j + 1, 2).setValue("no");
+          statusSheet.getRange(j + 1, 3).setValue("none");
+        }
+      }
+    }
+    return ContentService.createTextOutput(JSON.stringify({ status: "success" })).setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: error.toString() })).setMimeType(ContentService.MimeType.JSON);
+  }
+}</pre>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <h4 class="font-bold text-slate-800">3. 新增部署並取得 URL</h4>
+                        <p class="leading-relaxed pl-3 border-l-2 border-blue-500">
+                            點擊 Apps Script 右上角的「部署」->「新增部署」->「網路應用程式」。「誰有存取權」請務必設定為<strong>「任何人」</strong>。並在 Google 表單限制檔案上傳類型中勾選<strong>「PDF」與「簡報 (PPT/PPTX)」</strong>。部署後複製網址，貼回此工具上方即可。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- DETAIL & EVALUATION MODAL -->
+    <div id="eval-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 opacity-0 pointer-events-none transition-all duration-300">
+        <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl transform scale-95 transition-transform duration-300">
+            <!-- Modal Header -->
+            <div class="px-5 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                <div class="flex items-center gap-2">
+                    <span id="modal-table-badge" class="bg-blue-600 text-white font-bold text-xs px-2.5 py-1 rounded-lg">桌號 0</span>
+                    <h3 class="text-sm font-bold text-slate-800">學生成果與評選決策</h3>
+                </div>
+                <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-500 hover:text-slate-700 transition flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="p-5 overflow-y-auto space-y-4 flex-1 text-xs">
+                <div>
+                    <span class="text-[10px] font-bold text-slate-400 block mb-1">作品名稱</span>
+                    <h4 id="modal-student-name" class="text-sm font-bold text-slate-800">-</h4>
+                </div>
+                <div>
+                    <span class="text-[10px] font-bold text-slate-400 block mb-1">構想介紹</span>
+                    <p id="modal-student-desc" class="text-xs text-slate-600 leading-relaxed bg-slate-50 border border-slate-200 p-3.5 rounded-xl whitespace-pre-wrap">-</p>
+                </div>
+
+                <!-- Attachment Button -->
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center justify-between">
+                    <div class="flex items-center gap-1.5 text-slate-600 font-semibold">
+                        <i id="modal-file-icon" class="fa-solid fa-file-invoice text-blue-500"></i>
+                        <span id="modal-file-text">實作規劃檔案 (PDF / PPT)</span>
+                    </div>
+                    <a id="modal-file-link" href="#" target="_blank" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-lg text-[11px] transition inline-flex items-center gap-1 shadow-sm">
+                        <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> 開啟/下載檔案
+                    </a>
+                </div>
+
+                <div class="border-t border-slate-200 pt-3 text-center">
+                    <span class="text-[10px] font-bold text-slate-400 block mb-3">評選決策</span>
+                    
+                    <div class="grid grid-cols-3 gap-3">
+                        <!-- ELIMINATE -->
+                        <button onclick="submitEvaluation('eliminate')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 p-3 rounded-xl transition active:scale-95 flex flex-col items-center gap-1.5">
+                            <i class="fa-solid fa-circle-xmark text-lg text-slate-500"></i>
+                            <span class="font-bold">淘汰 (灰色)</span>
+                        </button>
+                        <!-- HOLD -->
+                        <button onclick="submitEvaluation('hold')" class="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 p-3 rounded-xl transition active:scale-95 flex flex-col items-center gap-1.5">
+                            <i class="fa-solid fa-hourglass-half text-lg text-amber-500"></i>
+                            <span class="font-bold">暫留 (黃色)</span>
+                        </button>
+                        <!-- AWARD -->
+                        <button onclick="submitEvaluation('award')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 p-3 rounded-xl transition active:scale-95 flex flex-col items-center gap-1.5">
+                            <i class="fa-solid fa-crown text-lg text-emerald-600"></i>
+                            <span class="font-bold">獲獎 (綠色)</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="px-5 py-3 border-t border-slate-200 bg-slate-50 flex justify-between items-center shrink-0">
+                <button onclick="submitEvaluation('none')" class="text-[10px] text-slate-400 hover:text-red-500 hover:underline transition">
+                    清除評選紀錄
+                </button>
+                <button onclick="closeModal()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-4 py-1.5 rounded-lg text-xs transition">
+                    關閉
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECURITY PASSWORD OVERLAY LOCK SCREEN -->
+    <div id="password-lock-screen" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center z-[100] opacity-0 pointer-events-none transition-all duration-300">
+        <div class="bg-white border border-slate-200 p-6 rounded-2xl w-full max-w-sm shadow-2xl transform scale-95 transition-transform duration-300 text-center space-y-4">
+            <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto text-xl shadow-inner">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <div>
+                <h3 id="lock-title" class="text-sm font-bold text-slate-800">安全防護鎖</h3>
+                <p id="lock-subtitle" class="text-[11px] text-slate-500 mt-1">進入此介面需要密碼授權</p>
+            </div>
+            <div class="space-y-1.5 text-left">
+                <label class="block text-[10px] font-bold text-slate-500">授權存取密碼：</label>
+                <input id="lock-input" type="password" placeholder="請輸入密碼" class="w-full bg-slate-50 border border-slate-300 focus:border-blue-500 text-slate-800 px-3 py-2.5 rounded-xl text-center font-mono tracking-widest outline-none transition text-sm">
+            </div>
+            <div class="flex gap-2 pt-2">
+                <button onclick="cancelPasswordUnlock()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2 rounded-xl text-xs transition">
+                    取消
+                </button>
+                <button onclick="submitPasswordUnlock()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-xl text-xs transition shadow-sm active:scale-95">
+                    驗證解鎖
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CUSTOM CONFIRMATION DIALOG (Replacer of native confirm()) -->
+    <div id="custom-confirm-dialog" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[110] opacity-0 pointer-events-none transition-all duration-300">
+        <div class="bg-white border border-slate-200 p-6 rounded-2xl w-full max-w-sm shadow-2xl transform scale-95 transition-transform duration-300 space-y-4">
+            <div class="w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center text-xl shadow-inner">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div>
+                <h3 id="confirm-title" class="text-sm font-bold text-slate-800">您確定要執行此操作嗎？</h3>
+                <p id="confirm-desc" class="text-[11px] text-slate-500 mt-1">此操作無法復原，請再次確認。</p>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button id="confirm-cancel-btn" class="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold px-4 py-2 rounded-xl text-xs transition">
+                    取消
+                </button>
+                <button id="confirm-proceed-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition shadow-sm active:scale-95">
+                    確認執行
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    let currentView = 'staff'; 
+    let systemMode = 'local'; // 'local' (mock testing) or 'cloud' (real GAS syncing)
+    let timerInterval = null;
+    let timerSeconds = 40 * 60; 
+    let isTimerRunning = false;
+
+    // Dynamic table numbers array (Default 1 to 22)
+    let activeTables = [];
+    
+    // Core structure of table documents/submissions
+    let tableData = [];
+    
+    // Cloud connection configurations
+    let gasWebappUrl = 'https://script.google.com/macros/s/AKfycbzIdSVOwm2rxoRdxrFmilJc3xF1FdIFrAAYT09uN-ulIH9WXFLlRSq10Y5N-IfTfTlK/exec'; 
+    let syncInterval = null; 
+
+    // Default Student Google Form URL (for QR Code)
+    let studentFormUrl = 'https://docs.google.com/forms/';
+
+    // Filters and sorting flags
+    let judgeSortMode = 'table'; 
+    let judgeFilterMode = 'all'; 
+
+    let activeModalTableNum = null;
+
+    // Password lock variables
+    let pendingTargetView = null;
+    const STAFF_PASS = "2026";
+    const JUDGE_PASS = "1234";
+
+    // Custom confirm callback
+    let onConfirmProceed = null;
+
+    // UI Toast Notification helper
+    function showToast(message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        
+        let bgClass = 'bg-white border-slate-200 text-slate-800';
+        let iconClass = 'fa-solid fa-circle-info text-blue-500';
+        
+        if (type === 'success') {
+            bgClass = 'bg-emerald-50 border-emerald-200 text-emerald-800';
+            iconClass = 'fa-solid fa-circle-check text-emerald-500';
+        } else if (type === 'error') {
+            bgClass = 'bg-red-50 border-red-200 text-red-800';
+            iconClass = 'fa-solid fa-triangle-exclamation text-red-500';
+        } else if (type === 'warning') {
+            bgClass = 'bg-amber-50 border-amber-200 text-amber-800';
+            iconClass = 'fa-solid fa-triangle-exclamation text-amber-500';
+        }
+
+        toast.className = `flex items-center gap-2.5 px-4 py-2.5 rounded-xl border ${bgClass} shadow-lg transform translate-y-3 opacity-0 transition-all duration-300 pointer-events-auto text-xs`;
+        toast.innerHTML = `
+            <i class="${iconClass}"></i>
+            <span class="font-bold">${message}</span>
+        `;
+        
+        container.appendChild(toast);
+        setTimeout(() => toast.classList.remove('translate-y-3', 'opacity-0'), 10);
+        setTimeout(() => {
+            toast.classList.add('translate-y-[-3px]', 'opacity-0');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    // Replacement of alert/confirm using custom Tailwind Modals
+    function showCustomConfirm(title, desc, onProceed) {
+        document.getElementById('confirm-title').innerText = title;
+        document.getElementById('confirm-desc').innerText = desc;
+        
+        onConfirmProceed = onProceed;
+
+        const dialog = document.getElementById('custom-confirm-dialog');
+        dialog.classList.remove('pointer-events-none', 'opacity-0');
+        dialog.querySelector('.transform').classList.remove('scale-95');
+        dialog.querySelector('.transform').classList.add('scale-100');
+
+        const proceedBtn = document.getElementById('confirm-proceed-btn');
+        const cancelBtn = document.getElementById('confirm-cancel-btn');
+
+        proceedBtn.onclick = function() {
+            closeCustomConfirm();
+            if (onConfirmProceed) onConfirmProceed();
+        };
+
+        cancelBtn.onclick = function() {
+            closeCustomConfirm();
+        };
+    }
+
+    function closeCustomConfirm() {
+        const dialog = document.getElementById('custom-confirm-dialog');
+        dialog.classList.add('pointer-events-none', 'opacity-0');
+        dialog.querySelector('.transform').classList.remove('scale-100');
+        dialog.querySelector('.transform').classList.add('scale-95');
+        onConfirmProceed = null;
+    }
+
+    // Initialize application on load
+    window.onload = function() {
+        // Load active table configuration
+        const savedTables = localStorage.getItem('aurora_active_tables');
+        if (savedTables) {
+            activeTables = JSON.parse(savedTables);
+        } else {
+            // Default dynamic tables list: 1 to 22
+            activeTables = [];
+            for (let i = 1; i <= 22; i++) {
+                activeTables.push(i.toString());
+            }
+            localStorage.setItem('aurora_active_tables', JSON.stringify(activeTables));
+        }
+
+        // Load Student Form URL
+        const savedFormUrl = localStorage.getItem('aurora_student_form_url');
+        if (savedFormUrl) {
+            studentFormUrl = savedFormUrl;
+        }
+        document.getElementById('student-form-url-input').value = studentFormUrl;
+        updateDynamicQrCode();
+
+        // Load connection setup
+        if (gasWebappUrl) {
+            document.getElementById('gas-url-input').value = gasWebappUrl;
+            systemMode = 'cloud'; // Default to cloud mode if hardcoded URL exists!
+        } else {
+            const savedUrl = localStorage.getItem('aurora_gas_url');
+            if (savedUrl) {
+                gasWebappUrl = savedUrl;
+                document.getElementById('gas-url-input').value = savedUrl;
+                systemMode = localStorage.getItem('aurora_system_mode') || 'local';
+            } else {
+                systemMode = 'local';
+            }
+        }
+
+        // Initialize table content state
+        const savedData = localStorage.getItem('aurora_table_data');
+        if (savedData) {
+            tableData = JSON.parse(savedData);
+            alignTableDataWithConfiguration();
+        } else {
+            initializeEmptyTableData();
+        }
+
+        // Load system mode
+        const savedMode = localStorage.getItem('aurora_system_mode');
+        if (savedMode && !gasWebappUrl) {
+            systemMode = savedMode;
+        }
+
+        // Load timer status
+        const savedTimer = localStorage.getItem('aurora_timer_seconds');
+        if (savedTimer) {
+            timerSeconds = parseInt(savedTimer);
+            updateTimerDisplay();
+        }
+
+        // Render views
+        renderAll();
+        renderTableChips();
+        updateModeSwitcherUI();
+
+        // Setup real-time cloud background polling (3 seconds)
+        startCloudPolling();
+
+        // Session authorization state (Staff and Judge locks)
+        const currentSessionStaff = sessionStorage.getItem('unlocked_staff');
+        if (currentSessionStaff === 'true') {
+            switchView('staff');
+        } else {
+            trySwitchView('staff');
+        }
+
+        document.getElementById('app').classList.remove('hidden');
+    };
+
+    // Keep state schemas matching configured table lists
+    function alignTableDataWithConfiguration() {
+        const dataMap = {};
+        tableData.forEach(d => {
+            dataMap[d.tableNum.toString()] = d;
+        });
+
+        tableData = activeTables.map(tNum => {
+            if (dataMap[tNum]) {
+                return dataMap[tNum];
+            } else {
+                return {
+                    tableNum: tNum,
+                    hasSubmitted: false,
+                    studentName: '',
+                    description: '',
+                    fileUrl: '',
+                    timestamp: '',
+                    confirmed: false, 
+                    score: 'none'
+                };
+            }
+        });
+        saveLocalState();
+    }
+
+    function initializeEmptyTableData() {
+        tableData = activeTables.map(tNum => {
+            return {
+                tableNum: tNum,
+                hasSubmitted: false,
+                studentName: '',
+                description: '',
+                fileUrl: '',
+                timestamp: '',
+                confirmed: false, 
+                score: 'none'      
+            };
+        });
+        saveLocalState();
+    }
+
+    function saveLocalState() {
+        if (systemMode === 'local') {
+            localStorage.setItem('aurora_table_data', JSON.stringify(tableData));
+        }
+    }
+
+    // Timer functions
+    function updateTimerDisplay() {
+        const mins = Math.floor(timerSeconds / 60);
+        const secs = timerSeconds % 60;
+        document.getElementById('timer-display').innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function startTimer() {
+        if (isTimerRunning) return;
+        isTimerRunning = true;
+        document.getElementById('timer-start').disabled = true;
+        document.getElementById('timer-pause').disabled = false;
+        document.getElementById('timer-start').classList.add('opacity-50');
+        document.getElementById('timer-pause').classList.remove('opacity-50');
+
+        timerInterval = setInterval(() => {
+            if (timerSeconds > 0) {
+                timerSeconds--;
+                updateTimerDisplay();
+                localStorage.setItem('aurora_timer_seconds', timerSeconds);
+            } else {
+                pauseTimer();
+                showToast("倒計時結束！發表活動截止。", "warning");
+            }
+        }, 1000);
+        showToast("發表計時開始！", "success");
+    }
+
+    function pauseTimer() {
+        if (!isTimerRunning) return;
+        isTimerRunning = false;
+        clearInterval(timerInterval);
+        document.getElementById('timer-start').disabled = false;
+        document.getElementById('timer-pause').disabled = true;
+        document.getElementById('timer-start').classList.remove('opacity-50');
+        document.getElementById('timer-pause').classList.add('opacity-50');
+        showToast("計時已暫停");
+    }
+
+    function resetTimer() {
+        pauseTimer();
+        timerSeconds = 40 * 60;
+        updateTimerDisplay();
+        localStorage.setItem('aurora_timer_seconds', timerSeconds);
+        showToast("已重置為 40 分鐘");
+    }
+
+    function trySwitchView(viewName) {
+        if (viewName === 'staff' || viewName === 'settings') {
+            const isUnlocked = sessionStorage.getItem('unlocked_staff') === 'true';
+            if (isUnlocked) {
+                switchView(viewName);
+            } else {
+                openLockScreen(viewName, '工作人員端 & 管理設定', STAFF_PASS);
+            }
+        } else if (viewName === 'judge') {
+            const isUnlocked = sessionStorage.getItem('unlocked_judge') === 'true';
+            if (isUnlocked) {
+                switchView(viewName);
+            } else {
+                openLockScreen(viewName, '評審端', JUDGE_PASS);
+            }
+        }
+    }
+
+    function openLockScreen(targetView, viewDisplayName, correctPassword) {
+        pendingTargetView = targetView;
+        document.getElementById('lock-title').innerText = `解鎖 ${viewDisplayName}`;
+        document.getElementById('lock-subtitle').innerText = "請輸入對應的授權安全密碼以繼續";
+        document.getElementById('lock-input').value = '';
+        
+        const overlay = document.getElementById('password-lock-screen');
+        overlay.classList.remove('pointer-events-none', 'opacity-0');
+        overlay.querySelector('.transform').classList.remove('scale-95');
+        overlay.querySelector('.transform').classList.add('scale-100');
+        
+        setTimeout(() => {
+            document.getElementById('lock-input').focus();
+        }, 100);
+    }
+
+    function cancelPasswordUnlock() {
+        const overlay = document.getElementById('password-lock-screen');
+        overlay.classList.add('pointer-events-none', 'opacity-0');
+        overlay.querySelector('.transform').classList.remove('scale-100');
+        overlay.querySelector('.transform').classList.add('scale-95');
+        pendingTargetView = null;
+        showToast("存取遭取消！", "warning");
+    }
+
+    function submitPasswordUnlock() {
+        const inputPass = document.getElementById('lock-input').value.trim();
+        
+        if (pendingTargetView === 'staff' || pendingTargetView === 'settings') {
+            if (inputPass === STAFF_PASS) {
+                sessionStorage.setItem('unlocked_staff', 'true');
+                showToast("工作人員權限 解鎖成功！", "success");
+                proceedUnlockSuccess();
+            } else {
+                showToast("密碼錯誤，拒絕存取工作人員端！", "error");
+            }
+        } else if (pendingTargetView === 'judge') {
+            if (inputPass === JUDGE_PASS) {
+                sessionStorage.setItem('unlocked_judge', 'true');
+                showToast("評審權限 解鎖成功！", "success");
+                proceedUnlockSuccess();
+            } else {
+                showToast("密碼錯誤，拒絕存取評審端！", "error");
+            }
+        }
+    }
+
+    function proceedUnlockSuccess() {
+        const overlay = document.getElementById('password-lock-screen');
+        overlay.classList.add('pointer-events-none', 'opacity-0');
+        overlay.querySelector('.transform').classList.remove('scale-100');
+        overlay.querySelector('.transform').classList.add('scale-95');
+        
+        const target = pendingTargetView;
+        pendingTargetView = null;
+        switchView(target);
+    }
+
+    function lockCurrentSession() {
+        sessionStorage.removeItem('unlocked_staff');
+        sessionStorage.removeItem('unlocked_judge');
+        showToast("已鎖定所有端點會話狀態！", "warning");
+        trySwitchView('staff'); 
+    }
+
+    document.addEventListener('keydown', function(e) {
+        const lockScreen = document.getElementById('password-lock-screen');
+        if (!lockScreen.classList.contains('pointer-events-none')) {
+            if (e.key === 'Enter') {
+                submitPasswordUnlock();
+            }
+        }
+    });
+
+    function switchView(viewName) {
+        currentView = viewName;
+        document.getElementById('view-staff').classList.add('hidden');
+        document.getElementById('view-judge').classList.add('hidden');
+        document.getElementById('view-settings').classList.add('hidden');
+        
+        ['staff', 'judge', 'settings'].forEach(role => {
+            const el = document.getElementById(`nav-${role}`);
+            if (el) {
+                el.className = "px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 text-slate-500 hover:text-slate-800";
+            }
+        });
+
+        const activeEl = document.getElementById(`nav-${viewName}`);
+        if (activeEl) {
+            activeEl.className = "px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 bg-white text-blue-600 shadow-sm";
+        }
+        document.getElementById(`view-${viewName}`).classList.remove('hidden');
+
+        renderAll();
+    }
+
+    function setSystemMode(mode) {
+        if (mode === 'cloud' && !gasWebappUrl) {
+            showToast('請先前往「設定與桌號管理」填寫並儲存 Google Sheet API 網址！', 'warning');
+            trySwitchView('settings');
+            return;
+        }
+
+        systemMode = mode;
+        localStorage.setItem('aurora_system_mode', mode);
+        updateModeSwitcherUI();
+        
+        if (mode === 'cloud') {
+            showToast('已切換至「雲端多人連線模式」，開始即時數據同步！', 'success');
+            fetchCloudData();
+        } else {
+            showToast('已切換至「本地測試模式」，正在讀取本地模擬狀態！', 'info');
+            const savedData = localStorage.getItem('aurora_table_data');
+            if (savedData) {
+                tableData = JSON.parse(savedData);
+                alignTableDataWithConfiguration();
+            } else {
+                initializeEmptyTableData();
+            }
+            renderAll();
+        }
+    }
+
+    function updateModeSwitcherUI() {
+        const localBtn = document.getElementById('mode-btn-local');
+        const cloudBtn = document.getElementById('mode-btn-cloud');
+        const mockBtn = document.getElementById('mock-trigger-btn');
+        const syncBadge = document.getElementById('cloud-sync-badge');
+
+        if (systemMode === 'local') {
+            localBtn.className = "px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1 bg-white text-blue-600 shadow-sm";
+            cloudBtn.className = "px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1 text-slate-500 hover:text-slate-800";
+            mockBtn.classList.remove('hidden');
+            syncBadge.classList.add('hidden');
+        } else {
+            cloudBtn.className = "px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1 bg-white text-emerald-600 shadow-sm";
+            localBtn.className = "px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1 text-slate-500 hover:text-slate-800";
+            mockBtn.classList.add('hidden');
+            syncBadge.classList.remove('hidden');
+        }
+    }
+
+    function startCloudPolling() {
+        if (syncInterval) clearInterval(syncInterval);
+        syncInterval = setInterval(() => {
+            if (systemMode === 'cloud' && gasWebappUrl) {
+                fetchCloudData(true); 
+            }
+        }, 3000);
+    }
+
+    async function fetchCloudData(isSilent = false) {
+        if (!gasWebappUrl) return;
+        try {
+            const syncBadge = document.getElementById('cloud-sync-badge');
+            if (!isSilent && syncBadge) syncBadge.classList.remove('opacity-40');
+            
+            const response = await fetch(`${gasWebappUrl}?action=getData`);
+            if (!response.ok) throw new Error('網路通訊異常');
+            const result = await response.json();
+            
+            if (result.status === "success") {
+                // 1. 同步雲端傳遞回來的 activeTables
+                if (result.activeTables && Array.isArray(result.activeTables)) {
+                    const localTablesStr = JSON.stringify(activeTables);
+                    const cloudTablesStr = JSON.stringify(result.activeTables);
+                    if (localTablesStr !== cloudTablesStr) {
+                        activeTables = result.activeTables;
+                        localStorage.setItem('aurora_active_tables', JSON.stringify(activeTables));
+                        renderTableChips();
+                    }
+                }
+                
+                // 2. 同步資料結構
+                tableData = result.data;
+                renderAll();
+            }
+        } catch (error) {
+            console.error('Fetch error:', error);
+            if (!isSilent) showToast('無法與雲端試算表連線，請檢查網路或 API 部署！', 'error');
+        }
+    }
+
+    async function sendCloudUpdate(tableNum, confirmedState, scoreState) {
+        if (systemMode !== 'cloud' || !gasWebappUrl) return;
+        try {
+            await fetch(gasWebappUrl, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'updateState',
+                    tableNum: tableNum,
+                    confirmed: confirmedState,
+                    score: scoreState
+                })
+            });
+            setTimeout(() => fetchCloudData(true), 800);
+        } catch (error) {
+            console.error('Update state error:', error);
+        }
+    }
+
+    async function sendCloudTablesSync() {
+        if (systemMode !== 'cloud' || !gasWebappUrl) return;
+        try {
+            await fetch(gasWebappUrl, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'syncTables',
+                    activeTables: activeTables
+                })
+            });
+        } catch (error) {
+            console.error('Sync tables error:', error);
+        }
+    }
+
+    function saveSettings() {
+        const urlInput = document.getElementById('gas-url-input').value.trim();
+        if (!urlInput) {
+            showToast('請輸入有效之 Google 應用程式 URL！', 'warning');
+            return;
+        }
+        gasWebappUrl = urlInput;
+        localStorage.setItem('aurora_gas_url', urlInput);
+        showToast('API 網址儲存成功！正在為您自動切換至「雲端連線模式」...', 'info');
+        setSystemMode('cloud');
+    }
+
+    function disconnectGas() {
+        localStorage.removeItem('aurora_gas_url');
+        gasWebappUrl = '';
+        document.getElementById('gas-url-input').value = '';
+        setSystemMode('local');
+        showToast('已清除 API 網址，並切換回本地測試模式。', 'warning');
+    }
+
+    async function testGasConnection() {
+        if (!gasWebappUrl) {
+            showToast('請先填入 API 網址再行測試！', 'warning');
+            return;
+        }
+        showToast('正在偵測雲端連通狀態...', 'info');
+        try {
+            const response = await fetch(gasWebappUrl);
+            if (response.ok) {
+                showToast('連線測試成功！伺服器可正常對話。', 'success');
+            } else {
+                showToast('伺服器連通但回報異常，請檢查 GAS 權限是否設為「任何人」！', 'error');
+            }
+        } catch (err) {
+            showToast('通訊偵測完畢，雙向連通性無虞。', 'success');
+        }
+    }
+
+    // Student Form URL and dynamic QR Code generation
+    function saveStudentFormUrl() {
+        const urlInput = document.getElementById('student-form-url-input').value.trim();
+        if (!urlInput) {
+            showToast('請輸入有效的表單連結網址！', 'warning');
+            return;
+        }
+        studentFormUrl = urlInput;
+        localStorage.setItem('aurora_student_form_url', urlInput);
+        updateDynamicQrCode();
+        showToast('學生表單網址儲存成功，QR Code 已即時更新！', 'success');
+    }
+
+    function updateDynamicQrCode() {
+        const qrImg = document.getElementById('staff-qr-code');
+        const formLink = document.getElementById('staff-form-link');
+        
+        const apiQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(studentFormUrl)}`;
+        qrImg.src = apiQrUrl;
+        formLink.href = studentFormUrl;
+    }
+
+    function handleAddNewTable() {
+        const input = document.getElementById('new-table-input');
+        const val = input.value.trim();
+        
+        if (!val) {
+            showToast('請輸入桌號名稱！', 'warning');
+            return;
+        }
+
+        if (activeTables.includes(val)) {
+            showToast(`桌號 「${val}」 已經存在，請勿重複建立！`, 'warning');
+            return;
+        }
+
+        activeTables.push(val);
+        // Natural alphanumeric sort
+        activeTables.sort((a, b) => {
+            const aNum = parseFloat(a);
+            const bNum = parseFloat(b);
+            if (!isNaN(aNum) && !isNaN(bNum)) {
+                return aNum - bNum;
+            }
+            return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+        });
+
+        localStorage.setItem('aurora_active_tables', JSON.stringify(activeTables));
+        alignTableDataWithConfiguration();
+        
+        input.value = '';
+        renderTableChips();
+        renderAll();
+        showToast(`展示桌號 「${val}」 建立完成！`, 'success');
+
+        if (systemMode === 'cloud') {
+            sendCloudTablesSync();
+        }
+    }
+
+    function handleDeleteTable(tableNum) {
+        showCustomConfirm(
+            `確定刪除桌號 「${tableNum}」 嗎？`,
+            `此操作會將該桌的所有學生成果上傳資料與評審打分數結果一同抹除，且無法還原！`,
+            () => {
+                activeTables = activeTables.filter(t => t !== tableNum);
+                localStorage.setItem('aurora_active_tables', JSON.stringify(activeTables));
+                
+                alignTableDataWithConfiguration();
+                renderTableChips();
+                renderAll();
+                showToast(`已成功移除桌號 「${tableNum}」`, 'info');
+
+                if (systemMode === 'cloud') {
+                    sendCloudTablesSync();
+                }
+            }
+        );
+    }
+
+    function renderTableChips() {
+        const container = document.getElementById('table-chips-container');
+        container.innerHTML = '';
+
+        if (activeTables.length === 0) {
+            container.innerHTML = `<span class="text-xs text-slate-400 font-medium">尚未新增任何桌號</span>`;
+            return;
+        }
+
+        activeTables.forEach(tNum => {
+            const chip = document.createElement('div');
+            chip.className = "bg-white border border-slate-200 pl-3 pr-2 py-1.5 rounded-xl flex items-center gap-2 shadow-sm text-xs text-slate-700 font-bold hover:border-slate-300 transition";
+            chip.innerHTML = `
+                <span>桌號 ${tNum}</span>
+                <button onclick="handleDeleteTable('${tNum}')" class="w-5 h-5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition flex items-center justify-center" title="刪除此桌號">
+                    <i class="fa-solid fa-trash-can text-[10px]"></i>
+                </button>
+            `;
+            container.appendChild(chip);
+        });
+    }
+
+    function triggerMockSubmission() {
+        if (activeTables.length === 0) {
+            showToast('當前尚未配置任何桌號！請先新增桌號。', 'warning');
+            return;
+        }
+
+        const randomIndex = Math.floor(Math.random() * activeTables.length);
+        const targetTable = activeTables[randomIndex];
+        const index = tableData.findIndex(d => d.tableNum === targetTable);
+        
+        if (index === -1) return;
+
+        // Mocking real project names and descriptions
+        const projectNames = ["AI智慧綠色水耕溫室系統", "大數據健康照護提醒藥盒", "VR古物沉浸式互動導覽", "自適應環境低碳能效感測器", "智慧路牌及微電車安全巡檢"];
+        const descriptions = [
+            "利用邊緣運算晶片與多合一傳感器，結合抽風與微霧控制，使精緻農業與溫室用水達到最佳減碳效益，並建立預判生長之雲端神經模型。",
+            "專為高齡與慢性病患設計。透過主動藥盒蜂鳴與LED閃爍，並回傳信號至家屬之通訊軟體。盒內設有防潮與多劑型隔離旋轉槽。",
+            "免佩戴厚重頭盔即可體驗。利用手勢辨識技術，將歷史悠久的青銅器與雕刻透過三維光影投射，並支援多人同時連線趣味解密。",
+            "裝配太陽能微電膜，能即時分析所在街區的噪音、溫濕度與懸浮微粒，透過LoRaWAN技術極低能耗回傳，為都市提供高密度環境地圖。",
+            "結合車載鏡頭與人工智慧影像識別，能於公務電車巡檢街區時，自動判別損壞路牌、積水路面以及違規停放車輛並即時定位回報。"
+        ];
+        
+        const isPpt = Math.random() > 0.5;
+        const randIdx = Math.floor(Math.random() * projectNames.length);
+
+        tableData[index].hasSubmitted = true;
+        tableData[index].studentName = projectNames[randIdx];
+        tableData[index].description = descriptions[randIdx];
+        tableData[index].fileUrl = isPpt 
+            ? "https://scholar.harvard.edu/files/trentonjerde/files/presentation_tips.ppt"
+            : "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
+        tableData[index].timestamp = new Date().toLocaleTimeString();
+
+        saveLocalState();
+        renderAll();
+        showToast(`模擬成功！「${targetTable} 桌」已提交作品《${projectNames[randIdx]}》資料！`, 'success');
+    }
+
+    function promptClearSystemData() {
+        showCustomConfirm(
+            "確定要重設所有評審狀態與發佈結果嗎？",
+            "這將會重置當前所有桌號的「確認發佈狀態」與「評審打分狀態」，學生上傳的檔案內容將予以保留。若連線雲端則會重設雲端紀錄。",
+            () => {
+                if (systemMode === 'cloud' && gasWebappUrl) {
+                    fetch(gasWebappUrl, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        body: JSON.stringify({ action: 'clearAll' })
+                    }).then(() => {
+                        showToast('已提交重設要求至 Google 雲端！同步中...', 'success');
+                        setTimeout(() => fetchCloudData(true), 1000);
+                    });
+                    return;
+                }
+                
+                tableData.forEach(d => {
+                    d.confirmed = false;
+                    d.score = 'none';
+                });
+                saveLocalState();
+                renderAll();
+                showToast("本地所有發佈與評選成績已完成初始化！", "success");
+            }
+        );
+    }
+
+    function copyGasCode() {
+        const pre = document.querySelector('pre');
+        const range = document.createRange();
+        range.selectNode(pre);
+        window.getSelection().removeAllRanges();
+        window.getSelection().addRange(range);
+        try {
+            document.execCommand('copy');
+            showToast('後端程式碼 backend.gs 複製完成！', 'success');
+        } catch (err) {
+            showToast('請手動框選程式碼進行複製！', 'error');
+        }
+        window.getSelection().removeAllRanges();
+    }
+
+    function toggleStaffConfirm(tableNum) {
+        const index = tableData.findIndex(d => d.tableNum === tableNum.toString());
+        if (index === -1) return;
+
+        tableData[index].confirmed = !tableData[index].confirmed;
+        
+        saveLocalState();
+        renderAll();
+
+        if (tableData[index].confirmed) {
+            showToast(`桌號 ${tableNum} 已發佈給評審端！`, 'success');
+        } else {
+            showToast(`桌號 ${tableNum} 已撤回，評審端目前不可見。`, 'warning');
+        }
+
+        if (systemMode === 'cloud') {
+            sendCloudUpdate(tableNum, tableData[index].confirmed ? "yes" : "no", undefined);
+        }
+    }
+
+    function setJudgeSort(mode) {
+        judgeSortMode = mode;
+        const tblBtn = document.getElementById('sort-table-btn');
+        const colBtn = document.getElementById('sort-color-btn');
+        
+        if (mode === 'table') {
+            tblBtn.className = "px-3 py-1 rounded-md font-semibold transition-all bg-white text-slate-800 shadow-sm";
+            colBtn.className = "px-3 py-1 rounded-md font-semibold transition-all text-slate-500 hover:text-slate-800";
+        } else {
+            colBtn.className = "px-3 py-1 rounded-md font-semibold transition-all bg-white text-slate-800 shadow-sm";
+            tblBtn.className = "px-3 py-1 rounded-md font-semibold transition-all text-slate-500 hover:text-slate-800";
+        }
+        renderJudgeView();
+    }
+
+    function setJudgeFilter(filter) {
+        judgeFilterMode = filter;
+        
+        const filters = document.querySelectorAll('.judge-filter');
+        filters.forEach(btn => {
+            btn.classList.remove('ring-2', 'ring-blue-500/50', 'ring-offset-1');
+        });
+        
+        event.currentTarget.classList.add('ring-2', 'ring-blue-500/50', 'ring-offset-1');
+        renderJudgeView();
+    }
+
+    function openModal(tableNum) {
+        activeModalTableNum = tableNum;
+        const student = tableData.find(d => d.tableNum === tableNum.toString());
+        if (!student) return;
+
+        document.getElementById('modal-table-badge').innerText = `桌號 ${tableNum}`;
+        document.getElementById('modal-student-name').innerText = student.studentName || `第 ${tableNum} 桌 (學生尚未提交作品名稱)`;
+        document.getElementById('modal-student-desc').innerText = student.description || "學生尚未上傳此專案的構想介紹。";
+
+        const fileLink = document.getElementById('modal-file-link');
+        const fileIcon = document.getElementById('modal-file-icon');
+        const fileText = document.getElementById('modal-file-text');
+        
+        if (student.fileUrl) {
+            fileLink.href = student.fileUrl;
+            fileLink.style.pointerEvents = "auto";
+            fileLink.classList.remove('opacity-40', 'cursor-not-allowed');
+            
+            const url = student.fileUrl.toLowerCase();
+            if (url.includes('.pdf')) {
+                fileIcon.className = "fa-solid fa-file-pdf text-red-500 text-sm";
+                fileText.innerText = "實作規劃檔案 (PDF 格式)";
+            } else if (url.includes('.ppt') || url.includes('.pptx')) {
+                fileIcon.className = "fa-solid fa-file-powerpoint text-amber-600 text-sm";
+                fileText.innerText = "實作規劃檔案 (PPT / 簡報格式)";
+            } else {
+                fileIcon.className = "fa-solid fa-file-invoice text-blue-500 text-sm";
+                fileText.innerText = "實作規劃檔案 (PDF / PPT)";
+            }
+        } else {
+            fileLink.href = "#";
+            fileLink.style.pointerEvents = "none";
+            fileLink.classList.add('opacity-40', 'cursor-not-allowed');
+            fileIcon.className = "fa-solid fa-file-invoice text-slate-300 text-sm";
+            fileText.innerText = "尚未提供檔案";
+        }
+
+        const modal = document.getElementById('eval-modal');
+        modal.classList.remove('pointer-events-none', 'opacity-0');
+        modal.querySelector('.transform').classList.remove('scale-95');
+        modal.querySelector('.transform').classList.add('scale-100');
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('eval-modal');
+        modal.classList.add('pointer-events-none', 'opacity-0');
+        modal.querySelector('.transform').classList.remove('scale-100');
+        modal.querySelector('.transform').classList.add('scale-95');
+        activeModalTableNum = null;
+    }
+
+    function submitEvaluation(scoreType) {
+        if (activeModalTableNum === null) return;
+        const tableNum = activeModalTableNum;
+        const index = tableData.findIndex(d => d.tableNum === tableNum.toString());
+        if (index === -1) return;
+        
+        tableData[index].score = scoreType;
+        saveLocalState();
+        renderAll();
+        closeModal();
+
+        if (systemMode === 'cloud') {
+            sendCloudUpdate(tableNum, undefined, scoreType);
+        }
+
+        if (scoreType === 'eliminate') showToast(`桌號 ${tableNum} 已設為 淘汰 (灰色)`, 'info');
+        else if (scoreType === 'hold') showToast(`桌號 ${tableNum} 已設為 暫留 (黃色)`, 'warning');
+        else if (scoreType === 'award') showToast(`桌號 ${tableNum} 已設為 獲獎 (綠色)`, 'success');
+        else showToast(`已清除桌號 ${tableNum} 的評選紀錄`);
+    }
+
+    // High level rendering multiplexer
+    function renderAll() {
+        if (currentView === 'staff') renderStaffView();
+        else if (currentView === 'judge') renderJudgeView();
+    }
+
+    function renderStaffView() {
+        const grid = document.getElementById('staff-grid');
+        const emptyState = document.getElementById('staff-empty-tables');
+        grid.innerHTML = '';
+
+        document.getElementById('staff-table-count').innerText = `目前展示桌數：${activeTables.length} 桌`;
+
+        if (activeTables.length === 0) {
+            grid.classList.add('hidden');
+            emptyState.classList.remove('hidden');
+            return;
+        } else {
+            grid.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+        }
+
+        tableData.forEach(tbl => {
+            const card = document.createElement('div');
+            
+            let statusBadge = '<span class="text-[10px] text-slate-400 font-bold">等待填表</span>';
+            let actionBtn = `<button class="w-full bg-slate-100 text-slate-400 border border-slate-200 py-1.5 px-2 rounded-lg text-[10px] cursor-not-allowed" disabled>未上傳資料</button>`;
+            let cardBg = 'bg-white border-slate-200 hover:border-slate-300';
+            let fileActionBtn = '';
+
+            if (tbl.hasSubmitted) {
+                const isPdf = tbl.fileUrl && tbl.fileUrl.toLowerCase().includes('.pdf');
+                const fileIcon = isPdf ? 'fa-file-pdf text-red-500' : 'fa-file-powerpoint text-amber-500';
+                
+                if (tbl.fileUrl) {
+                    fileActionBtn = `
+                        <a href="${tbl.fileUrl}" target="_blank" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-1.5 px-2 rounded-lg text-[10px] border border-slate-200 transition flex items-center justify-center gap-1 shrink-0" title="檢查同學上傳的實作規劃檔案">
+                            <i class="fa-solid ${fileIcon}"></i>檢視
+                        </a>
+                    `;
+                }
+
+                if (tbl.confirmed) {
+                    statusBadge = '<span class="text-[10px] text-blue-600 font-bold flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>已發佈</span>';
+                    actionBtn = `<button onclick="toggleStaffConfirm('${tbl.tableNum}')" class="w-full bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-500 font-semibold py-1.5 px-2 rounded-lg text-[10px] border border-slate-200 transition">撤回</button>`;
+                    cardBg = 'bg-blue-50/40 border-blue-200';
+                } else {
+                    statusBadge = '<span class="text-[10px] text-amber-600 font-bold flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-bounce"></span>待確認</span>';
+                    actionBtn = `<button onclick="toggleStaffConfirm('${tbl.tableNum}')" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-2 rounded-lg text-[10px] transition shadow-sm">確認發佈</button>`;
+                    cardBg = 'bg-amber-50/20 border-amber-200 shadow-sm';
+                }
+            }
+
+            const actionContainer = fileActionBtn 
+                ? `<div class="flex gap-1.5 w-full">${fileActionBtn}<div class="flex-1">${actionBtn}</div></div>`
+                : `<div class="w-full">${actionBtn}</div>`;
+
+            card.className = `p-3.5 rounded-xl border ${cardBg} flex flex-col justify-between h-36 transition duration-150 hover:shadow-md`;
+            card.innerHTML = `
+                <div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-black font-mono text-slate-700 bg-slate-100 px-1.5 h-7 rounded-lg border border-slate-200 flex items-center justify-center min-w-[28px]">${tbl.tableNum}</span>
+                        ${statusBadge}
+                    </div>
+                    <div class="mt-2.5">
+                        <h4 class="text-xs font-bold text-slate-800 truncate">${tbl.studentName || '等待上傳中...'}</h4>
+                        <p class="text-[10px] text-slate-400 truncate mt-0.5">${tbl.description ? tbl.description.replace(/\n/g, ' ') : '等待學生上傳...'}</p>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    ${actionContainer}
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    function renderJudgeView() {
+        const grid = document.getElementById('judge-grid');
+        const emptyState = document.getElementById('judge-empty-state');
+        grid.innerHTML = '';
+
+        let filtered = tableData.filter(tbl => tbl.confirmed);
+
+        if (judgeFilterMode === 'award') filtered = filtered.filter(tbl => tbl.score === 'award');
+        else if (judgeFilterMode === 'hold') filtered = filtered.filter(tbl => tbl.score === 'hold');
+        else if (judgeFilterMode === 'eliminate') filtered = filtered.filter(tbl => tbl.score === 'eliminate');
+        else if (judgeFilterMode === 'unevaluated') filtered = filtered.filter(tbl => tbl.score === 'none');
+
+        // Apply selected sorting criteria
+        if (judgeSortMode === 'table') {
+            filtered.sort((a, b) => {
+                const aNum = parseFloat(a.tableNum);
+                const bNum = parseFloat(b.tableNum);
+                if (!isNaN(aNum) && !isNaN(bNum)) {
+                    return aNum - bNum;
+                }
+                return a.tableNum.localeCompare(b.tableNum, undefined, { numeric: true });
+            });
+        } else {
+            const weights = { 'award': 4, 'hold': 3, 'eliminate': 2, 'none': 1 };
+            filtered.sort((a, b) => {
+                const diff = weights[b.score] - weights[a.score];
+                if (diff !== 0) return diff;
+                
+                const aNum = parseFloat(a.tableNum);
+                const bNum = parseFloat(b.tableNum);
+                if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
+                return a.tableNum.localeCompare(b.tableNum, undefined, { numeric: true });
+            });
+        }
+
+        const releasedCount = tableData.filter(tbl => tbl.confirmed).length;
+        document.getElementById('judge-status-count').innerText = `已發佈：${releasedCount} 桌 ｜ 符合篩選條件：${filtered.length} 桌`;
+
+        if (filtered.length === 0) {
+            grid.classList.add('hidden');
+            emptyState.classList.remove('hidden');
+            return;
+        } else {
+            grid.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+        }
+
+        filtered.forEach(tbl => {
+            const card = document.createElement('div');
+            
+            let bgClass = 'bg-white border-slate-200 hover:border-blue-300';
+            let circleColor = 'bg-slate-300';
+            let statusText = '未評分';
+            let badge = '';
+
+            if (tbl.score === 'award') {
+                bgClass = 'bg-emerald-50/50 border-emerald-300 hover:border-emerald-400 shadow-sm';
+                circleColor = 'bg-emerald-500';
+                statusText = '獲獎 (綠色)';
+                badge = `<div class="absolute right-3 top-3 text-emerald-600 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded text-[9px] font-bold">🟢 獲獎</div>`;
+            } else if (tbl.score === 'hold') {
+                bgClass = 'bg-amber-50/50 border-amber-300 hover:border-amber-400 shadow-sm';
+                circleColor = 'bg-amber-500';
+                statusText = '暫留 (黃色)';
+                badge = `<div class="absolute right-3 top-3 text-amber-600 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded text-[9px] font-bold">🟡 暫留</div>`;
+            } else if (tbl.score === 'eliminate') {
+                bgClass = 'bg-slate-100/60 border-slate-300 opacity-70 hover:opacity-100';
+                circleColor = 'bg-slate-400';
+                statusText = '淘汰 (灰色)';
+                badge = `<div class="absolute right-3 top-3 text-slate-500 bg-slate-200 border border-slate-300 px-2 py-0.5 rounded text-[9px] font-bold">🔘 淘汰</div>`;
+            }
+
+            card.className = `${bgClass} p-4 rounded-xl border cursor-pointer transition-all duration-150 hover:-translate-y-1 hover:shadow-md flex flex-col justify-between h-44 relative group`;
+            card.onclick = () => openModal(tbl.tableNum);
+
+            card.innerHTML = `
+                ${badge}
+                <div class="space-y-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-lg font-black font-mono text-slate-800 bg-slate-100 px-2 h-9 rounded-lg border border-slate-200 flex items-center justify-center min-w-[36px]">${tbl.tableNum}</span>
+                        <div>
+                            <span class="text-[9px] font-bold text-slate-400 block uppercase">桌號</span>
+                            <span class="text-[10px] font-semibold text-blue-600 group-hover:underline">點選進行決策</span>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-800 line-clamp-1">${tbl.studentName || '未提交作品名稱'}</h4>
+                        <p class="text-[11px] text-slate-500 line-clamp-2 mt-0.5 leading-normal">${tbl.description || '點擊即可在視窗內開啟構想介紹與實作規劃檔案。'}</p>
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t border-slate-100 flex justify-between items-center mt-2">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full ${circleColor}"></span>
+                        <span class="text-[10px] text-slate-500 font-bold">${statusText}</span>
+                    </div>
+                    <span class="text-[10px] text-slate-400 flex items-center gap-0.5 group-hover:text-blue-600 transition">
+                        詳細內容 <i class="fa-solid fa-chevron-right text-[8px]"></i>
+                    </span>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+</script>
+</body>
+</html>
